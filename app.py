@@ -1,9 +1,20 @@
 from flask import Flask, jsonify
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 from weather_client import fetch_weather
 from weather_client import CityNotFoundError, WeatherAPIError, WeatherAPITimeout
 from cache import get_cached_weather, set_cached_weather
+from config import REDIS_HOST, REDIS_PORT
 
 app = Flask(__name__)
+
+
+limiter = Limiter(
+    get_remote_address,
+    app=app,
+    default_limits=["100 per hour"],
+    storage_uri=f"redis://{REDIS_HOST}:{REDIS_PORT}",
+)
 
 
 @app.errorhandler(CityNotFoundError)
@@ -19,6 +30,7 @@ def handle_weather_api_timeout(error):
     return jsonify({"error": str(error)}), 504
 
 @app.route("/weather/<city>", methods=["GET"])
+@limiter.limit("5 per minute")
 def get_weather(city):
     cached_weather = get_cached_weather(city)
     if cached_weather is not None:
