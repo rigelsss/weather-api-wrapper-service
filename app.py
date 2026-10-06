@@ -29,6 +29,10 @@ def handle_weather_api_error(error):
 def handle_weather_api_timeout(error):
     return jsonify({"error": str(error)}), 504
 
+@app.errorhandler(429)
+def handle_rate_limit_exceeded(error):
+    return jsonify({"error": "Rate limit exceeded. Please try again later."}), 429
+
 @app.route("/weather/<city>", methods=["GET"])
 @limiter.limit("5 per minute")
 def get_weather(city):
